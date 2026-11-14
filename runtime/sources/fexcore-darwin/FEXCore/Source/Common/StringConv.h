@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: MIT
 #pragma once
+#include <cstdlib>
 #include <FEXCore/fextl/string.h>
 
 #include <concepts>
