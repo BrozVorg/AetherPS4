@@ -34,6 +34,17 @@ for source in "${SMOKE_SOURCE}" "${GUEST_ENGINE_SOURCE}" "${FEX_GUEST_CPU_SOURCE
   test -f "${source}" || { echo "Missing build source: ${source}" >&2; exit 1; }
 done
 
+# The guest harness compiles AetherPS4 sources which include the project's
+# logging wrapper. Fetch only the required spdlog submodule (not every project
+# external) and expose its headers to the standalone FEXCore harness target.
+SPDLOG_SOURCE="${PROJECT_ROOT}/externals/spdlog"
+git -C "${PROJECT_ROOT}" submodule update --init --depth 1 -- externals/spdlog
+SPDLOG_INCLUDE_DIR="${SPDLOG_SOURCE}/include"
+test -f "${SPDLOG_INCLUDE_DIR}/spdlog/details/fmt_helper.h" || {
+  echo "Missing spdlog headers after submodule checkout: ${SPDLOG_INCLUDE_DIR}" >&2
+  exit 1
+}
+
 # The FEXCore-only/smoke targets are added by the repository patch. The Darwin
 # snapshot may already contain that patch; apply it only if the target hook is absent.
 if ! grep -Fq "FEXCORE_GUEST_HARNESS_SOURCES" "${FEX_SOURCE}/CMakeLists.txt"; then
@@ -64,7 +75,7 @@ cmake -S "${FEX_SOURCE}" -B "${BUILD_DIR}" -G Ninja \
   -DCMAKE_SYSTEM_PROCESSOR=arm64 \
   -DCMAKE_BUILD_TYPE=Release \
   -DCMAKE_C_FLAGS="-DFEX_MAC_PHONE_PATH=1" \
-  -DCMAKE_CXX_FLAGS="-DFEX_MAC_PHONE_PATH=1" \
+  -DCMAKE_CXX_FLAGS="-DFEX_MAC_PHONE_PATH=1 -I${SPDLOG_INCLUDE_DIR}" \
   -DCMAKE_DISABLE_FIND_PACKAGE_xxhash=ON \
   -DTUNE_CPU=none \
   -DBUILD_FEXCORE_ONLY=ON \
