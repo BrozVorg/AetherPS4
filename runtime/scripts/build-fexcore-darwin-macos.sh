@@ -45,6 +45,14 @@ test -f "${SPDLOG_INCLUDE_DIR}/spdlog/details/fmt_helper.h" || {
   exit 1
 }
 
+# The standalone guest harness also uses Boost ICL headers.
+BOOST_SOURCE="${PROJECT_ROOT}/externals/ext-boost"
+git -C "${PROJECT_ROOT}" submodule update --init --depth 1 -- externals/ext-boost
+BOOST_INCLUDE_DIR="${BOOST_SOURCE}"
+test -f "${BOOST_INCLUDE_DIR}/boost/icl/separate_interval_set.hpp" || {
+  echo "Missing Boost ICL headers after submodule checkout: ${BOOST_INCLUDE_DIR}" >&2
+  exit 1
+}
 # The FEXCore-only/smoke targets are added by the repository patch. The Darwin
 # snapshot may already contain that patch; apply it only if the target hook is absent.
 if ! grep -Fq "FEXCORE_GUEST_HARNESS_SOURCES" "${FEX_SOURCE}/CMakeLists.txt"; then
@@ -75,7 +83,7 @@ cmake -S "${FEX_SOURCE}" -B "${BUILD_DIR}" -G Ninja \
   -DCMAKE_SYSTEM_PROCESSOR=arm64 \
   -DCMAKE_BUILD_TYPE=Release \
   -DCMAKE_C_FLAGS="-DFEX_MAC_PHONE_PATH=1" \
-  -DCMAKE_CXX_FLAGS="-DFEX_MAC_PHONE_PATH=1 -I${SPDLOG_INCLUDE_DIR}" \
+  -DCMAKE_CXX_FLAGS="-DFEX_MAC_PHONE_PATH=1 -I${SPDLOG_INCLUDE_DIR} -I${BOOST_INCLUDE_DIR}" \
   -DCMAKE_DISABLE_FIND_PACKAGE_xxhash=ON \
   -DTUNE_CPU=none \
   -DBUILD_FEXCORE_ONLY=ON \
