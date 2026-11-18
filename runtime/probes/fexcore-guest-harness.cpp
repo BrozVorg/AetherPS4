@@ -60,22 +60,22 @@ private:
   void* address;
 };
 
-class HarnessBridge final : public Core::Fex::GuestBridge {
+class HarnessBridge final : public AetherPS4::Fex::GuestBridge {
 public:
-  Core::Fex::EngineResult<bool> Invoke(Core::GuestCpu::HleCallFrame& frame) override {
+  AetherPS4::Fex::EngineResult<bool> Invoke(Core::GuestCpu::HleCallFrame& frame) override {
     const auto operation = frame.operation;
     const auto argument = frame.gpr[FEXCore::X86State::REG_RDI];
     if (operation != kHarnessBridgeOperation || argument != kHarnessBridgeArgument) {
-      return Core::Fex::EngineFailure {Core::Fex::EngineStage::Bridge, ENOSYS};
+      return AetherPS4::Fex::EngineFailure {AetherPS4::Fex::EngineStage::Bridge, ENOSYS};
     }
     frame.gpr[FEXCore::X86State::REG_RAX] = kHarnessBridgeResult;
     return true;
   }
 };
 
-class NestedCallbackBridge final : public Core::Fex::GuestBridge {
+class NestedCallbackBridge final : public AetherPS4::Fex::GuestBridge {
 public:
-  Core::Fex::EngineResult<bool> Invoke(Core::GuestCpu::HleCallFrame& frame) override {
+  AetherPS4::Fex::EngineResult<bool> Invoke(Core::GuestCpu::HleCallFrame& frame) override {
     if (std::getenv("BACHATA_FEX_TRACE") != nullptr) {
       std::fprintf(stderr,
                    "FEXCORE_GUEST_TRACE nested-bridge-enter op=%llx backend=%p callback=%p\n",
@@ -84,7 +84,7 @@ public:
       std::fflush(stderr);
     }
     if (frame.operation != kNestedCallbackOperation || backend == nullptr || callback == 0) {
-      return Core::Fex::EngineFailure {Core::Fex::EngineStage::Bridge, ENOSYS};
+      return AetherPS4::Fex::EngineFailure {AetherPS4::Fex::EngineStage::Bridge, ENOSYS};
     }
     const std::array<uint64_t, 1> arguments{kNestedCallbackInput};
     const auto result = backend->CallGuest(callback, arguments);
@@ -94,7 +94,7 @@ public:
                      static_cast<int>(failure->Stage), failure->Error);
         std::fflush(stderr);
       }
-      return Core::Fex::EngineFailure {Core::Fex::EngineStage::Bridge, failure->Error};
+      return AetherPS4::Fex::EngineFailure {AetherPS4::Fex::EngineStage::Bridge, failure->Error};
     }
     const auto& state = std::get<Core::GuestExecutionState>(result);
     if (std::getenv("BACHATA_FEX_TRACE") != nullptr) {
@@ -105,7 +105,7 @@ public:
       std::fflush(stderr);
     }
     if (state.StopReason != Core::GuestStopReason::Returned) {
-      return Core::Fex::EngineFailure {Core::Fex::EngineStage::Bridge, EPROTO};
+      return AetherPS4::Fex::EngineFailure {AetherPS4::Fex::EngineStage::Bridge, EPROTO};
     }
     frame.gpr[FEXCore::X86State::REG_RAX] = state.Gpr[FEXCore::X86State::REG_RAX];
     invoked = true;
@@ -201,7 +201,7 @@ uint64_t DoubleBits(double value) {
   return bits;
 }
 
-int Fail(const Core::Fex::EngineFailure& failure) {
+int Fail(const AetherPS4::Fex::EngineFailure& failure) {
   std::fprintf(stderr, "FEXCORE_GUEST_ENGINE_FAIL stage=%d error=%d\n", static_cast<int>(failure.Stage), failure.Error);
   return 1;
 }
@@ -216,21 +216,21 @@ int Fail(const Core::GuestExecutionFailure& failure) {
 int main() {
   Trace("start");
   HarnessBridge bridge;
-  auto engineResult = Core::Fex::GuestEngine::Create(bridge);
-  if (const auto* failure = std::get_if<Core::Fex::EngineFailure>(&engineResult)) return Fail(*failure);
-  auto engine = std::move(std::get<std::unique_ptr<Core::Fex::GuestEngine>>(engineResult));
+  auto engineResult = AetherPS4::Fex::GuestEngine::Create(bridge);
+  if (const auto* failure = std::get_if<AetherPS4::Fex::EngineFailure>(&engineResult)) return Fail(*failure);
+  auto engine = std::move(std::get<std::unique_ptr<AetherPS4::Fex::GuestEngine>>(engineResult));
 
   auto runResult = engine->RunControlledHarness();
-  if (const auto* failure = std::get_if<Core::Fex::EngineFailure>(&runResult)) return Fail(*failure);
-  const auto result = std::get<Core::Fex::GuestRunResult>(runResult);
+  if (const auto* failure = std::get_if<AetherPS4::Fex::EngineFailure>(&runResult)) return Fail(*failure);
+  const auto result = std::get<AetherPS4::Fex::GuestRunResult>(runResult);
   if (!result.Gpr || !result.Rflags || !result.Xmm || !result.Bridge || !result.Threads ||
       !result.Tls || !result.Unaligned || !result.Invalidation) {
-    return Fail({Core::Fex::EngineStage::Execute, EPROTO});
+    return Fail({AetherPS4::Fex::EngineStage::Execute, EPROTO});
   }
   Trace("controlled-engine-ok");
 
   auto shutdownResult = engine->Shutdown();
-  if (const auto* failure = std::get_if<Core::Fex::EngineFailure>(&shutdownResult)) return Fail(*failure);
+  if (const auto* failure = std::get_if<AetherPS4::Fex::EngineFailure>(&shutdownResult)) return Fail(*failure);
 
   const auto pageSize = sysconf(_SC_PAGESIZE);
   if (pageSize != 4096) return 1;
