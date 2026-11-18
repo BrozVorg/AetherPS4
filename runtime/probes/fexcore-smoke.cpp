@@ -567,3 +567,19 @@ int main() {
               kFexRevision.data());
   return 0;
 }
+
+#include <cstddef>
+#include <cstdint>
+
+// The standalone FEXCore smoke test does not include the AetherPS4
+// guest engine, so provide a no-op implementation of its diagnostic hook.
+namespace AetherPS4::Fex {
+void BachataRecordKnownBlockSnapshot(
+    std::uintptr_t writable_code_ptr,
+    const unsigned char* bytes,
+    std::size_t len) noexcept {
+  (void)writable_code_ptr;
+  (void)bytes;
+  (void)len;
+}
+}
